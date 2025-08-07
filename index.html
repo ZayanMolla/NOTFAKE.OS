@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fake OS</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="desktop">
+    <div class="icon" onclick="openApp('notepad')">
+      <img src="https://icons.iconarchive.com/icons/custom-icon-design/pretty-office-11/64/Notepad-icon.png" alt="Notepad" />
+      <span>Notepad.txt</span>
+    </div>
+    <div class="icon" onclick="openApp('snake')">
+      <img src="https://icons.iconarchive.com/icons/graphicloads/colorful-long-shadow/64/Game-icon.png" alt="Snake" />
+      <span>Snake.exe</span>
+    </div>
+  </div>
+
+  <!-- Notepad App -->
+  <div class="window" id="notepad">
+    <div class="title-bar" onmousedown="startDrag(event, this.parentElement)">
+      <span>Notepad.txt</span>
+      <button onclick="closeApp('notepad')">X</button>
+    </div>
+    <div class="window-content">
+      <textarea>This is a NOT fake OS. DON'T Look deeper for secrets...
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        why are you still reading? weirdo</textarea>
+    </div>
+  </div>
+
+  <!-- Snake App -->
+  <div class="window" id="snake">
+    <div class="title-bar" onmousedown="startDrag(event, this.parentElement)">
+      <span>Snake.exe</span>
+      <button onclick="closeApp('snake')">X</button>
+    </div>
+    <div class="window-content">
+      <div id="scoreDisplay" style="font-weight:bold; margin-bottom:8px; color:#000080; display:none;">Score: 0</div>
+      <button id="startSnakeBtn">Start Game</button>
+      <canvas id="snakeCanvas" width="200" height="200" style="display:none; margin-top:10px;"></canvas>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
