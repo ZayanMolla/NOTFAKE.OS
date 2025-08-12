@@ -1,222 +1,190 @@
-// Window management
 function openApp(id) {
   const app = document.getElementById(id);
   app.style.display = 'block';
   app.style.left = '100px';
   app.style.top = '100px';
-  bringToFront(app);
 }
 
 function closeApp(id) {
-  const app = document.getElementById(id);
-  app.style.display = 'none';
-  if (id === 'snake') {
-    stopSnake();
-  }
+  document.getElementById(id).style.display = 'none';
 }
 
-let highestZ = 1000;
-function bringToFront(el) {
-  highestZ++;
-  el.style.zIndex = highestZ;
-}
-
-// Dragging logic
+// Dragging
 let offsetX, offsetY, draggedWindow = null;
-
 function startDrag(e, windowEl) {
   draggedWindow = windowEl;
   offsetX = e.clientX - windowEl.offsetLeft;
   offsetY = e.clientY - windowEl.offsetTop;
-  bringToFront(windowEl);
   document.onmousemove = dragWindow;
   document.onmouseup = stopDrag;
 }
-
 function dragWindow(e) {
   if (!draggedWindow) return;
   draggedWindow.style.left = (e.clientX - offsetX) + 'px';
   draggedWindow.style.top = (e.clientY - offsetY) + 'px';
 }
-
 function stopDrag() {
   draggedWindow = null;
   document.onmousemove = null;
   document.onmouseup = null;
 }
 
-// --- Snake game ---
+// Clock
+setInterval(() => {
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleTimeString();
+}, 1000);
 
-const canvas = document.getElementById("snakeCanvas");
-const ctx = canvas.getContext("2d");
-const startBtn = document.getElementById("startSnakeBtn");
-const scoreDisplay = document.getElementById("scoreDisplay");
-
-// Create Play Again button dynamically
-let playAgainBtn = document.createElement("button");
-playAgainBtn.textContent = "Play Again?";
-playAgainBtn.style.marginTop = "10px";
-playAgainBtn.style.padding = "8px 16px";
-playAgainBtn.style.fontSize = "16px";
-playAgainBtn.style.cursor = "pointer";
-playAgainBtn.style.display = "none";
-
-const snakeWindowContent = document.querySelector("#snake .window-content");
-snakeWindowContent.appendChild(playAgainBtn);
-
-const gridSize = 20;
-const tileCount = canvas.width / gridSize;
-
-let snake = [];
-let snakeLength = 5;
-let direction = { x: 1, y: 0 };
-let food = { x: 0, y: 0 };
-let gameInterval = null;
-let gameSpeed = 150;
-let gameOver = false;
-let score = 0;
-
-startBtn.addEventListener('click', () => {
-  startBtn.style.display = 'none';
-  playAgainBtn.style.display = 'none';
-  scoreDisplay.style.display = 'block';
-  canvas.style.display = 'block';
-  startSnake();
-});
-
-playAgainBtn.addEventListener('click', () => {
-  playAgainBtn.style.display = 'none';
-  scoreDisplay.style.display = 'block';
-  startSnake();
-});
+// Snake
+let snake, direction, food, score, snakeInterval;
+const snakeCanvas = document.getElementById("snakeCanvas");
+const ctx = snakeCanvas.getContext("2d");
 
 function startSnake() {
-  snake = [];
-  snakeLength = 5;
-  direction = { x: 1, y: 0 };
-  gameOver = false;
+  document.getElementById("snakeGameOver").style.display = "none";
+  document.getElementById("snakeStartBtn").style.display = "none";
   score = 0;
-  updateScore();
-
-  // Initialize snake in center
-  for (let i = snakeLength - 1; i >= 0; i--) {
-    snake.push({ x: i, y: Math.floor(tileCount / 2) });
-  }
-
+  snake = [{x: 100, y: 100}];
+  direction = {x: 20, y: 0};
   placeFood();
-
-  if (gameInterval) clearInterval(gameInterval);
-  gameInterval = setInterval(gameLoop, gameSpeed);
-  document.addEventListener("keydown", keyDown);
-}
-
-function stopSnake() {
-  clearInterval(gameInterval);
-  gameInterval = null;
-  document.removeEventListener("keydown", keyDown);
-  canvas.style.display = 'none';
-  startBtn.style.display = 'block';
-  playAgainBtn.style.display = 'none';
-  scoreDisplay.style.display = 'none';
+  snakeInterval = setInterval(updateSnake, 200);
 }
 
 function placeFood() {
-  food.x = Math.floor(Math.random() * tileCount);
-  food.y = Math.floor(Math.random() * tileCount);
-
-  if (snake.some(segment => segment.x === food.x && segment.y === food.y)) {
-    placeFood();
-  }
+  food = {
+    x: Math.floor(Math.random() * 10) * 20,
+    y: Math.floor(Math.random() * 10) * 20
+  };
 }
 
-function gameLoop() {
-  if (gameOver) {
-    drawGameOver();
-    return;
+function updateSnake() {
+  let head = {x: snake[0].x + direction.x, y: snake[0].y + direction.y};
+
+  // Wall collision
+  if (head.x < 0 || head.y < 0 || head.x >= snakeCanvas.width || head.y >= snakeCanvas.height) {
+    return endSnake();
   }
 
-  let headX = snake[0].x + direction.x;
-  let headY = snake[0].y + direction.y;
-
-  // New wall collision check — no wrapping
-  if (headX < 0 || headX >= tileCount || headY < 0 || headY >= tileCount) {
-    gameOver = true;
+  // Self collision
+  for (let part of snake) {
+    if (head.x === part.x && head.y === part.y) return endSnake();
   }
 
-  if (gameOver) {
-    drawGameOver();
-    return;
-  }
-
-  if (snake.some(segment => segment.x === headX && segment.y === headY)) {
-    gameOver = true;
-  }
-
-  if (gameOver) {
-    drawGameOver();
-    return;
-  }
-
-  snake.unshift({ x: headX, y: headY });
-
-  if (headX === food.x && headY === food.y) {
-    snakeLength++;
+  snake.unshift(head);
+  if (head.x === food.x && head.y === food.y) {
     score++;
-    updateScore();
+    document.getElementById("snakeScore").textContent = "Score: " + score;
     placeFood();
-  }
-
-  while (snake.length > snakeLength) {
+  } else {
     snake.pop();
   }
 
-  draw();
-}
-
-function draw() {
-  ctx.fillStyle = "black";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  ctx.fillStyle = "lime";
-  snake.forEach((segment) => {
-    ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
-  });
-
+  ctx.clearRect(0, 0, snakeCanvas.width, snakeCanvas.height);
+  ctx.fillStyle = "green";
+  snake.forEach(part => ctx.fillRect(part.x, part.y, 20, 20));
   ctx.fillStyle = "red";
-  ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize, gridSize);
+  ctx.fillRect(food.x, food.y, 20, 20);
 }
 
-function drawGameOver() {
-  ctx.fillStyle = "black";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "red";
-  ctx.font = "30px Tahoma";
-  ctx.textAlign = "center";
-  ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2);
-
-  playAgainBtn.style.display = "inline-block";
-  scoreDisplay.style.display = "none";
+function endSnake() {
+  clearInterval(snakeInterval);
+  document.getElementById("snakeGameOver").style.display = "block";
 }
 
-function updateScore() {
-  scoreDisplay.textContent = "Score: " + score;
-}
+// Minesweeper
+const size = 8, mineCount = 10;
+let mineGrid = [];
 
-function keyDown(e) {
-  if (gameOver) return;
+function initMinesweeper() {
+  mineGrid = [];
+  const board = document.getElementById("mineBoard");
+  board.innerHTML = "";
+  board.style.gridTemplateColumns = `repeat(${size}, 30px)`;
 
-  switch (e.code) {
-    case "ArrowUp":
-      if (direction.y !== 1) direction = { x: 0, y: -1 };
-      break;
-    case "ArrowDown":
-      if (direction.y !== -1) direction = { x: 0, y: 1 };
-      break;
-    case "ArrowLeft":
-      if (direction.x !== 1) direction = { x: -1, y: 0 };
-      break;
-    case "ArrowRight":
-      if (direction.x !== -1) direction = { x: 1, y: 0 };
-      break;
+  // Create cells
+  for (let y = 0; y < size; y++) {
+    mineGrid[y] = [];
+    for (let x = 0; x < size; x++) {
+      const cell = document.createElement("div");
+      cell.classList.add("cell");
+      cell.dataset.x = x;
+      cell.dataset.y = y;
+      cell.oncontextmenu = e => { e.preventDefault(); toggleFlag(cell); };
+      cell.onclick = () => revealCell(x, y);
+      mineGrid[y][x] = {mine: false, revealed: false, flagged: false, element: cell};
+      board.appendChild(cell);
+    }
+  }
+
+  // Place mines
+  let placed = 0;
+  while (placed < mineCount) {
+    let rx = Math.floor(Math.random() * size);
+    let ry = Math.floor(Math.random() * size);
+    if (!mineGrid[ry][rx].mine) {
+      mineGrid[ry][rx].mine = true;
+      placed++;
+    }
   }
 }
+
+function toggleFlag(cell) {
+  const x = cell.dataset.x, y = cell.dataset.y;
+  let tile = mineGrid[y][x];
+  if (tile.revealed) return;
+  tile.flagged = !tile.flagged;
+  cell.textContent = tile.flagged ? "🚩" : "";
+}
+
+function revealCell(x, y) {
+  let tile = mineGrid[y][x];
+  if (tile.revealed || tile.flagged) return;
+  tile.revealed = true;
+  tile.element.classList.add("revealed");
+
+  if (tile.mine) {
+    tile.element.textContent = "💣";
+    document.getElementById("mineStatus").textContent = "Game Over!";
+    revealAllMines();
+    return;
+  }
+
+  let minesAround = countMines(x, y);
+  if (minesAround > 0) {
+    tile.element.textContent = minesAround;
+  } else {
+    for (let ny = y - 1; ny <= y + 1; ny++) {
+      for (let nx = x - 1; nx <= x + 1; nx++) {
+        if (nx >= 0 && ny >= 0 && nx < size && ny < size) {
+          revealCell(nx, ny);
+        }
+      }
+    }
+  }
+}
+
+function countMines(x, y) {
+  let count = 0;
+  for (let ny = y - 1; ny <= y + 1; ny++) {
+    for (let nx = x - 1; nx <= x + 1; nx++) {
+      if (nx >= 0 && ny >= 0 && nx < size && ny < size) {
+        if (mineGrid[ny][nx].mine) count++;
+      }
+    }
+  }
+  return count;
+}
+
+function revealAllMines() {
+  for (let row of mineGrid) {
+    for (let cell of row) {
+      if (cell.mine) {
+        cell.element.textContent = "💣";
+        cell.element.classList.add("revealed");
+      }
+    }
+  }
+}
+
+// Init Minesweeper on load
+initMinesweeper();
