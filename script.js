@@ -1,190 +1,355 @@
+/* ===========================
+   Taskbar/Window utilities
+   =========================== */
+const taskbarApps = document.getElementById('taskbar-apps');
+let highestZ = 10;
+let dragData = null;
+
+function bringToFront(element) {
+  highestZ++;
+  element.style.zIndex = highestZ;
+}
+
+function addTaskbarButton(id) {
+  if (document.getElementById('taskbar-btn-' + id)) return;
+  const btn = document.createElement('button');
+  btn.id = 'taskbar-btn-' + id;
+  const appNames = { 'minesweeper-app': 'Minesweeper', 'snake-app': 'Snake' };
+  btn.textContent = appNames[id] || id.replace('-app', '');
+  btn.onclick = () => toggleApp(id);
+  taskbarApps.appendChild(btn);
+}
+function removeTaskbarButton(id) {
+  const btn = document.getElementById('taskbar-btn-' + id);
+  if (btn) btn.remove();
+}
+
 function openApp(id) {
   const app = document.getElementById(id);
+  if (!app) return;
   app.style.display = 'block';
-  app.style.left = '100px';
-  app.style.top = '100px';
+  addTaskbarButton(id);
+  bringToFront(app);
+  if (id === 'snake-app') snake_updateHUDFromStorage();
 }
-
 function closeApp(id) {
-  document.getElementById(id).style.display = 'none';
+  const app = document.getElementById(id);
+  if (!app) return;
+  app.style.display = 'none';
+  removeTaskbarButton(id);
+  if (id === 'snake-app') snake_stop();
+}
+function toggleApp(id) {
+  const app = document.getElementById(id);
+  if (!app) return;
+  if (app.style.display === 'block') {
+    closeApp(id);
+  } else {
+    openApp(id);
+  }
 }
 
-// Dragging
-let offsetX, offsetY, draggedWindow = null;
-function startDrag(e, windowEl) {
-  draggedWindow = windowEl;
-  offsetX = e.clientX - windowEl.offsetLeft;
-  offsetY = e.clientY - windowEl.offsetTop;
-  document.onmousemove = dragWindow;
-  document.onmouseup = stopDrag;
+/* Draggable windows */
+function startDrag(e, element) {
+  dragData = {
+    offsetX: e.clientX - element.offsetLeft,
+    offsetY: e.clientY - element.offsetTop,
+    element
+  };
+  bringToFront(element);
+  document.addEventListener('mousemove', dragMove);
+  document.addEventListener('mouseup', dragEnd);
 }
-function dragWindow(e) {
-  if (!draggedWindow) return;
-  draggedWindow.style.left = (e.clientX - offsetX) + 'px';
-  draggedWindow.style.top = (e.clientY - offsetY) + 'px';
+function dragMove(e) {
+  if (!dragData) return;
+  dragData.element.style.left = Math.max(0, e.clientX - dragData.offsetX) + 'px';
+  dragData.element.style.top  = Math.max(0, e.clientY - dragData.offsetY) + 'px';
 }
-function stopDrag() {
-  draggedWindow = null;
-  document.onmousemove = null;
-  document.onmouseup = null;
+function dragEnd() {
+  dragData = null;
+  document.removeEventListener('mousemove', dragMove);
+  document.removeEventListener('mouseup', dragEnd);
 }
 
-// Clock
+/* Clock */
 setInterval(() => {
-  const now = new Date();
-  document.getElementById('clock').textContent = now.toLocaleTimeString();
+  const el = document.getElementById('clock');
+  if (el) el.textContent = new Date().toLocaleTimeString();
 }, 1000);
 
-// Snake
-let snake, direction, food, score, snakeInterval;
-const snakeCanvas = document.getElementById("snakeCanvas");
-const ctx = snakeCanvas.getContext("2d");
+/* =====================================
+   Minesweeper (namespaced)
+   ===================================== */
+const mines_rows = 10;
+const mines_cols = 10;
+const mines_mineCount = 15;
 
-function startSnake() {
-  document.getElementById("snakeGameOver").style.display = "none";
-  document.getElementById("snakeStartBtn").style.display = "none";
-  score = 0;
-  snake = [{x: 100, y: 100}];
-  direction = {x: 20, y: 0};
-  placeFood();
-  snakeInterval = setInterval(updateSnake, 200);
-}
+let mines_board = [];
+let mines_firstClick = true;
+let mines_gameOver = false;
 
-function placeFood() {
-  food = {
-    x: Math.floor(Math.random() * 10) * 20,
-    y: Math.floor(Math.random() * 10) * 20
-  };
-}
+function mines_initBoard() {
+  const container = document.getElementById('minesweeper');
+  const status = document.getElementById('minesweeper-status');
+  if (!container) return;
+  container.innerHTML = '';
+  status.textContent = '';
+  mines_board = [];
+  mines_firstClick = true;
+  mines_gameOver = false;
 
-function updateSnake() {
-  let head = {x: snake[0].x + direction.x, y: snake[0].y + direction.y};
+  for (let r = 0; r < mines_rows; r++) {
+    let row = [];
+    const rowDiv = document.createElement('div');
+    rowDiv.classList.add('row');
 
-  // Wall collision
-  if (head.x < 0 || head.y < 0 || head.x >= snakeCanvas.width || head.y >= snakeCanvas.height) {
-    return endSnake();
-  }
+    for (let c = 0; c < mines_cols; c++) {
+      const cell = document.createElement('div');
+      cell.classList.add('cell');
+      cell.dataset.row = r;
+      cell.dataset.col = c;
+      cell.addEventListener('click', mines_onCellClick);
 
-  // Self collision
-  for (let part of snake) {
-    if (head.x === part.x && head.y === part.y) return endSnake();
-  }
-
-  snake.unshift(head);
-  if (head.x === food.x && head.y === food.y) {
-    score++;
-    document.getElementById("snakeScore").textContent = "Score: " + score;
-    placeFood();
-  } else {
-    snake.pop();
-  }
-
-  ctx.clearRect(0, 0, snakeCanvas.width, snakeCanvas.height);
-  ctx.fillStyle = "green";
-  snake.forEach(part => ctx.fillRect(part.x, part.y, 20, 20));
-  ctx.fillStyle = "red";
-  ctx.fillRect(food.x, food.y, 20, 20);
-}
-
-function endSnake() {
-  clearInterval(snakeInterval);
-  document.getElementById("snakeGameOver").style.display = "block";
-}
-
-// Minesweeper
-const size = 8, mineCount = 10;
-let mineGrid = [];
-
-function initMinesweeper() {
-  mineGrid = [];
-  const board = document.getElementById("mineBoard");
-  board.innerHTML = "";
-  board.style.gridTemplateColumns = `repeat(${size}, 30px)`;
-
-  // Create cells
-  for (let y = 0; y < size; y++) {
-    mineGrid[y] = [];
-    for (let x = 0; x < size; x++) {
-      const cell = document.createElement("div");
-      cell.classList.add("cell");
-      cell.dataset.x = x;
-      cell.dataset.y = y;
-      cell.oncontextmenu = e => { e.preventDefault(); toggleFlag(cell); };
-      cell.onclick = () => revealCell(x, y);
-      mineGrid[y][x] = {mine: false, revealed: false, flagged: false, element: cell};
-      board.appendChild(cell);
+      rowDiv.appendChild(cell);
+      row.push({ mine: false, revealed: false, number: 0, element: cell });
     }
-  }
 
-  // Place mines
+    container.appendChild(rowDiv);
+    mines_board.push(row);
+  }
+}
+
+function mines_placeMinesAvoidingFirstClick(safeRow, safeCol) {
   let placed = 0;
-  while (placed < mineCount) {
-    let rx = Math.floor(Math.random() * size);
-    let ry = Math.floor(Math.random() * size);
-    if (!mineGrid[ry][rx].mine) {
-      mineGrid[ry][rx].mine = true;
+  while (placed < mines_mineCount) {
+    let r = Math.floor(Math.random() * mines_rows);
+    let c = Math.floor(Math.random() * mines_cols);
+    if ((r !== safeRow || c !== safeCol) && !mines_board[r][c].mine) {
+      mines_board[r][c].mine = true;
       placed++;
     }
   }
 }
-
-function toggleFlag(cell) {
-  const x = cell.dataset.x, y = cell.dataset.y;
-  let tile = mineGrid[y][x];
-  if (tile.revealed) return;
-  tile.flagged = !tile.flagged;
-  cell.textContent = tile.flagged ? "🚩" : "";
+function mines_calculateNumbers() {
+  const directions = [
+    [-1,-1],[-1,0],[-1,1],
+    [0,-1],        [0,1],
+    [1,-1],[1,0],[1,1]
+  ];
+  for (let r = 0; r < mines_rows; r++) {
+    for (let c = 0; c < mines_cols; c++) {
+      if (mines_board[r][c].mine) continue;
+      let count = 0;
+      directions.forEach(([dr, dc]) => {
+        const nr = r + dr, nc = c + dc;
+        if (nr >= 0 && nr < mines_rows && nc >= 0 && nc < mines_cols && mines_board[nr][nc].mine) {
+          count++;
+        }
+      });
+      mines_board[r][c].number = count;
+    }
+  }
 }
+function mines_onCellClick(e) {
+  if (mines_gameOver) return;
+  const r = +e.target.dataset.row;
+  const c = +e.target.dataset.col;
 
-function revealCell(x, y) {
-  let tile = mineGrid[y][x];
-  if (tile.revealed || tile.flagged) return;
-  tile.revealed = true;
-  tile.element.classList.add("revealed");
+  if (mines_firstClick) {
+    mines_placeMinesAvoidingFirstClick(r, c);
+    mines_calculateNumbers();
+    mines_firstClick = false;
+  }
+  mines_revealCell(r, c);
+  mines_checkWin();
+}
+function mines_revealCell(r, c) {
+  const cell = mines_board[r][c];
+  if (cell.revealed) return;
 
-  if (tile.mine) {
-    tile.element.textContent = "💣";
-    document.getElementById("mineStatus").textContent = "Game Over!";
-    revealAllMines();
+  cell.revealed = true;
+  cell.element.classList.add('revealed');
+
+  if (cell.mine) {
+    cell.element.classList.add('mine');
+    mines_endGame(false);
     return;
   }
 
-  let minesAround = countMines(x, y);
-  if (minesAround > 0) {
-    tile.element.textContent = minesAround;
+  if (cell.number > 0) {
+    cell.element.textContent = cell.number;
   } else {
-    for (let ny = y - 1; ny <= y + 1; ny++) {
-      for (let nx = x - 1; nx <= x + 1; nx++) {
-        if (nx >= 0 && ny >= 0 && nx < size && ny < size) {
-          revealCell(nx, ny);
+    const directions = [
+      [-1,-1],[-1,0],[-1,1],
+      [0,-1],        [0,1],
+      [1,-1],[1,0],[1,1]
+    ];
+    directions.forEach(([dr, dc]) => {
+      const nr = r + dr, nc = c + dc;
+      if (nr >= 0 && nr < mines_rows && nc >= 0 && nc < mines_cols) {
+        mines_revealCell(nr, nc);
+      }
+    });
+  }
+}
+function mines_endGame(won) {
+  mines_gameOver = true;
+  const msg = document.getElementById('minesweeper-status');
+  msg.textContent = won ? 'You Win!' : 'Game Over!';
+  if (!won) {
+    for (let r = 0; r < mines_rows; r++) {
+      for (let c = 0; c < mines_cols; c++) {
+        if (mines_board[r][c].mine) {
+          mines_board[r][c].element.classList.add('mine');
         }
       }
     }
   }
 }
-
-function countMines(x, y) {
-  let count = 0;
-  for (let ny = y - 1; ny <= y + 1; ny++) {
-    for (let nx = x - 1; nx <= x + 1; nx++) {
-      if (nx >= 0 && ny >= 0 && nx < size && ny < size) {
-        if (mineGrid[ny][nx].mine) count++;
-      }
+function mines_checkWin() {
+  let revealed = 0;
+  for (let r = 0; r < mines_rows; r++) {
+    for (let c = 0; c < mines_cols; c++) {
+      if (mines_board[r][c].revealed) revealed++;
     }
   }
-  return count;
-}
-
-function revealAllMines() {
-  for (let row of mineGrid) {
-    for (let cell of row) {
-      if (cell.mine) {
-        cell.element.textContent = "💣";
-        cell.element.classList.add("revealed");
-      }
-    }
+  if (revealed === mines_rows * mines_cols - mines_mineCount) {
+    mines_endGame(true);
   }
 }
 
-// Init Minesweeper on load
-initMinesweeper();
+/* Initialize minesweeper on load */
+mines_initBoard();
+
+/* ===========================
+   Snake (namespaced)
+   =========================== */
+const snake_canvas = document.getElementById('snake-canvas');
+const snake_ctx = snake_canvas ? snake_canvas.getContext('2d') : null;
+const snake_grid = 20; // px
+const snake_tiles = snake_canvas ? snake_canvas.width / snake_grid : 12;
+
+let snake_body = [];
+let snake_food = { x: 0, y: 0 };
+let snake_dir = null;
+let snake_interval = null;
+let snake_score = 0;
+let snake_high = 0;
+let snake_running = false;
+
+function snake_updateHUDFromStorage() {
+  snake_high = parseInt(localStorage.getItem('snakeHighScore') || '0', 10);
+  const highEl = document.getElementById('snake-highscore');
+  if (highEl) highEl.textContent = snake_high;
+  const scoreEl = document.getElementById('snake-score');
+  if (scoreEl) scoreEl.textContent = 0;
+}
+
+function snake_start() {
+  if (!snake_ctx) return;
+  snake_stop(); // clear any prior loop
+  snake_body = [{ x: 5, y: 5 }, { x: 4, y: 5 }, { x: 3, y: 5 }];
+  snake_dir = 'right';
+  snake_score = 0;
+  document.getElementById('snake-score').textContent = '0';
+  document.getElementById('snake-status').textContent = '';
+  snake_placeFood();
+  snake_draw();
+  snake_interval = setInterval(snake_tick, 120);
+  snake_running = true;
+}
+
+function snake_stop() {
+  if (snake_interval) {
+    clearInterval(snake_interval);
+    snake_interval = null;
+  }
+  snake_running = false;
+}
+
+function snake_placeFood() {
+  let ok = false;
+  while (!ok) {
+    snake_food.x = Math.floor(Math.random() * snake_tiles);
+    snake_food.y = Math.floor(Math.random() * snake_tiles);
+    ok = !snake_body.some(s => s.x === snake_food.x && s.y === snake_food.y);
+  }
+}
+
+function snake_draw() {
+  if (!snake_ctx) return;
+  snake_ctx.clearRect(0, 0, snake_canvas.width, snake_canvas.height);
+
+  // food
+  snake_ctx.fillStyle = 'red';
+  snake_ctx.fillRect(snake_food.x * snake_grid, snake_food.y * snake_grid, snake_grid, snake_grid);
+
+  // snake
+  snake_ctx.fillStyle = 'green';
+  snake_body.forEach((p, i) => {
+    snake_ctx.fillRect(p.x * snake_grid, p.y * snake_grid, snake_grid, snake_grid);
+    if (i === 0) {
+      snake_ctx.strokeStyle = 'darkgreen';
+      snake_ctx.lineWidth = 2;
+      snake_ctx.strokeRect(p.x * snake_grid, p.y * snake_grid, snake_grid, snake_grid);
+    }
+  });
+}
+
+function snake_tick() {
+  const head = { ...snake_body[0] };
+  switch (snake_dir) {
+    case 'left': head.x--; break;
+    case 'right': head.x++; break;
+    case 'up': head.y--; break;
+    case 'down': head.y++; break;
+  }
+
+  // collisions
+  if (
+    head.x < 0 || head.x >= snake_tiles ||
+    head.y < 0 || head.y >= snake_tiles ||
+    snake_body.some(s => s.x === head.x && s.y === head.y)
+  ) {
+    snake_gameOver();
+    return;
+  }
+
+  snake_body.unshift(head);
+
+  // eat?
+  if (head.x === snake_food.x && head.y === snake_food.y) {
+    snake_score++;
+    document.getElementById('snake-score').textContent = String(snake_score);
+    if (snake_score > snake_high) {
+      snake_high = snake_score;
+      localStorage.setItem('snakeHighScore', String(snake_high));
+      document.getElementById('snake-highscore').textContent = String(snake_high);
+    }
+    snake_placeFood();
+  } else {
+    snake_body.pop();
+  }
+
+  snake_draw();
+}
+
+function snake_gameOver() {
+  snake_stop();
+  document.getElementById('snake-status').textContent = 'Game Over! Press Start to play again.';
+}
+
+/* Keyboard controls only when running */
+window.addEventListener('keydown', e => {
+  if (!snake_running) return;
+  const map = { ArrowLeft: 'left', ArrowUp: 'up', ArrowRight: 'right', ArrowDown: 'down' };
+  const newDir = map[e.key];
+  if (!newDir) return;
+  const opposite = { left: 'right', right: 'left', up: 'down', down: 'up' };
+  if (snake_dir && newDir !== opposite[snake_dir]) {
+    snake_dir = newDir;
+  }
+});
+
+/* Initialize Snake HUD once (so high score shows when opening) */
+snake_updateHUDFromStorage();

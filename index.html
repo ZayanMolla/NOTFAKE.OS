@@ -2,71 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Fake OS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fake Windows XP OS</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <!-- Desktop Icons -->
   <div id="desktop">
-    <!-- Notepad Icon -->
-    <div class="icon" onclick="openApp('notepad')">
-      <img src="https://icons.iconarchive.com/icons/custom-icon-design/pretty-office-11/64/Notepad-icon.png" alt="Notepad">
-      <span>Notepad.txt</span>
+    <div class="icon" onclick="openApp('minesweeper-app')">
+      <img src="https://upload.wikimedia.org/wikipedia/en/0/0f/Minesweeper_Icon.png" alt="Minesweeper" />
+      <span>Minesweeper</span>
     </div>
-    <!-- Snake Icon -->
-    <div class="icon" onclick="openApp('snake')">
-      <img src="https://icons.iconarchive.com/icons/graphicloads/colorful-long-shadow/64/Game-icon.png" alt="Snake">
-      <span>Snake.exe</span>
-    </div>
-    <!-- Minesweeper Icon -->
-    <div class="icon" onclick="openApp('minesweeper')">
-      <img src="https://icons.iconarchive.com/icons/papirus-team/papirus-apps/64/minesweeper-icon.png" alt="Minesweeper">
-      <span>Minesweeper.exe</span>
-    </div>
-  </div>
-
-  <!-- Notepad App -->
-  <div class="window" id="notepad">
-    <div class="title-bar" onmousedown="startDrag(event, this.parentElement)">
-      <span>Notepad.txt</span>
-      <button onclick="closeApp('notepad')">X</button>
-    </div>
-    <div class="window-content">
-      <textarea>This is a NOT fake OS. DONT Look deeper for secrets...
-        
-        
-        
-        why are you still reading? weirdo</textarea>
-    </div>
-  </div>
-
-  <!-- Snake App -->
-  <div class="window" id="snake">
-    <div class="title-bar" onmousedown="startDrag(event, this.parentElement)">
-      <span>Snake.exe</span>
-      <button onclick="closeApp('snake')">X</button>
-    </div>
-    <div class="window-content">
-      <div id="snakeScore">Score: 0</div>
-      <canvas id="snakeCanvas" width="200" height="200"></canvas>
-      <div id="snakeGameOver" style="display:none; text-align:center;">
-        <h3>GAME OVER</h3>
-        <button onclick="startSnake()">Play Again?</button>
-      </div>
-      <button id="snakeStartBtn" onclick="startSnake()">Start Game</button>
-    </div>
-  </div>
-
-  <!-- Minesweeper App -->
-  <div class="window" id="minesweeper">
-    <div class="title-bar" onmousedown="startDrag(event, this.parentElement)">
-      <span>Minesweeper.exe</span>
-      <button onclick="closeApp('minesweeper')">X</button>
-    </div>
-    <div class="window-content">
-      <div id="mineBoard"></div>
-      <div id="mineStatus"></div>
-      <button onclick="initMinesweeper()">Restart</button>
+    <div class="icon" onclick="openApp('snake-app')">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/7/73/Snake_icon.svg" alt="Snake" />
+      <span>Snake</span>
     </div>
   </div>
 
@@ -75,6 +24,38 @@
     <div id="start-btn">Start</div>
     <div id="taskbar-apps"></div>
     <div id="clock"></div>
+  </div>
+
+  <!-- Minesweeper App -->
+  <div id="minesweeper-app" class="app-window">
+    <div class="app-title-bar" onmousedown="startDrag(event, this.parentElement)">
+      <span class="title">Minesweeper</span>
+      <div class="controls">
+        <button onclick="mines_initBoard()">Restart</button>
+        <button onclick="closeApp('minesweeper-app')">X</button>
+      </div>
+    </div>
+    <div id="minesweeper" class="app-content"></div>
+    <div id="minesweeper-status" class="status"></div>
+  </div>
+
+  <!-- Snake App -->
+  <div id="snake-app" class="app-window small">
+    <div class="app-title-bar" onmousedown="startDrag(event, this.parentElement)">
+      <span class="title">Snake</span>
+      <div class="controls">
+        <button id="snake-start-btn" onclick="snake_start()">Start</button>
+        <button onclick="closeApp('snake-app')">X</button>
+      </div>
+    </div>
+    <div id="snake-scoreboard">
+      <span>Score: <strong id="snake-score">0</strong></span>
+      <span>High Score: <strong id="snake-highscore">0</strong></span>
+    </div>
+    <div class="app-content" style="text-align:center;">
+      <canvas id="snake-canvas" width="240" height="240"></canvas>
+      <div id="snake-status" class="status"></div>
+    </div>
   </div>
 
   <script src="script.js"></script>
